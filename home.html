@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <title>IP Camera - Settings</title>
+    <link rel="stylesheet" href="style.css" />
+    <style>
+      .navbar {
+        background: #444;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        padding: 0 32px;
+        height: 56px;
+        font-size: 1.2rem;
+      }
+      .navbar .logo {
+        font-weight: bold;
+        font-size: 1.3rem;
+        margin-right: 32px;
+        letter-spacing: 1px;
+      }
+      .navbar .logout {
+        margin-left: auto;
+        color: #fff;
+        text-decoration: none;
+        font-weight: 500;
+        padding: 8px 16px;
+        background: #ff9800;
+        border-radius: 6px;
+        transition: background 0.2s;
+      }
+      .navbar .logout:hover {
+        background: #e67e22;
+      }
+      .container {
+        display: flex;
+        margin: 32px auto;
+        max-width: 900px;
+        gap: 32px;
+      }
+      .sidebar {
+        background: #222c36;
+        color: #fff;
+        width: 200px;
+        border-radius: 10px;
+        padding: 24px 0;
+        min-height: 400px;
+        box-shadow: 0 2px 8px rgba(44, 62, 80, 0.08);
+      }
+      .sidebar ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      .sidebar li {
+        padding: 14px 32px;
+        cursor: pointer;
+        font-size: 1rem;
+        border-left: 4px solid transparent;
+        transition: background 0.2s, border 0.2s;
+      }
+      .sidebar li.active,
+      .sidebar li:hover {
+        background: #34495e;
+        border-left: 4px solid #3b82f6;
+      }
+      .main-content {
+        background: #fff;
+        flex: 1;
+        border-radius: 10px;
+        box-shadow: 0 4px 16px rgba(44, 62, 80, 0.08);
+        padding: 32px 36px;
+        min-width: 0;
+      }
+      .settings-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #3386ff;
+        margin-bottom: 24px;
+      }
+      .settings-section {
+        margin-bottom: 32px;
+      }
+      .settings-section h3 {
+        margin-top: 0;
+        font-size: 1.1rem;
+        margin-bottom: 18px;
+        color: #222;
+        font-weight: 600;
+      }
+      .settings-row {
+        display: flex;
+        align-items: center;
+        margin-bottom: 14px;
+        gap: 18px;
+      }
+      .settings-row label {
+        width: 160px;
+        color: #444;
+        font-size: 0.98rem;
+      }
+      .settings-row input,
+      .settings-row select {
+        flex: 1;
+        padding: 6px 10px;
+        border-radius: 6px;
+        border: 1px solid #dbe2ef;
+        font-size: 1rem;
+        background: #fff;
+      }
+      .info-list {
+        background: #f7f9fc;
+        border-radius: 8px;
+        padding: 18px 20px;
+        box-shadow: 0 2px 8px rgba(44, 62, 80, 0.04);
+        font-size: 1rem;
+        color: #222;
+      }
+      .info-list dt {
+        font-weight: 600;
+        margin-top: 10px;
+      }
+      .info-list dd {
+        margin-left: 0;
+        margin-bottom: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="navbar">
+      <span class="logo">IP Camera</span>
+      <a href="index.html" class="logout">Logout</a>
+    </div>
+    <div class="container">
+      <aside class="sidebar">
+        <ul>
+          <li class="active">Wifi Setup</li>
+          <li>Firmware Update</li>
+          <li>Logging</li>
+          <li>System Information</li>
+        </ul>
+      </aside>
+      <main class="main-content">
+        <div class="settings-title">Settings</div>
+        <section class="settings-section" id="wifi">
+          <h3>Wifi Setup</h3>
+          <div class="settings-row">
+            <label>SSID</label>
+            <input type="text" placeholder="Nhập SSID..." />
+          </div>
+          <div class="settings-row">
+            <label>Password</label>
+            <input type="password" placeholder="Nhập mật khẩu..." />
+          </div>
+          <div class="settings-row">
+            <button
+              style="
+                padding: 8px 24px;
+                background: #3386ff;
+                color: #fff;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+              "
+            >
+              Kết nối Wifi
+            </button>
+          </div>
+        </section>
+        <section class="settings-section" id="firmware">
+          <h3>Firmware Update</h3>
+          <div class="settings-row">
+            <label>Chọn file firmware</label>
+            <input type="file" />
+          </div>
+          <div class="settings-row">
+            <button
+              style="
+                padding: 8px 24px;
+                background: #3386ff;
+                color: #fff;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+              "
+            >
+              Cập nhật
+            </button>
+          </div>
+        </section>
+        <section class="settings-section" id="logging">
+          <h3>Logging</h3>
+          <div class="settings-row">
+            <label>Log Level</label>
+            <select>
+              <option>Info</option>
+              <option>Warning</option>
+              <option>Error</option>
+            </select>
+          </div>
+          <div class="settings-row">
+            <button
+              style="
+                padding: 8px 24px;
+                background: #3386ff;
+                color: #fff;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+              "
+            >
+              Lưu Log
+            </button>
+          </div>
+        </section>
+        <section class="settings-section" id="system-info">
+          <h3>System Information</h3>
+          <dl class="info-list">
+            <dt>Firmware Version</dt>
+            <dd>v1.2.3</dd>
+            <dt>MAC Address</dt>
+            <dd>00:1A:2B:3C:4D:5E</dd>
+            <dt>IP Address</dt>
+            <dd>192.168.1.100</dd>
+            <dt>Device Model</dt>
+            <dd>IPC-2025</dd>
+          </dl>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

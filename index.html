@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Đăng nhập IPCamera</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="login-container">
+      <h2>Đăng nhập</h2>
+      <form id="loginForm">
+        <input
+          type="text"
+          id="username"
+          name="username"
+          placeholder="Tên đăng nhập"
+          required
+        />
+        <input
+          type="password"
+          id="password"
+          name="password"
+          placeholder="Mật khẩu"
+          required
+        />
+        <button type="submit">Đăng nhập</button>
+      </form>
+      <div
+        id="message"
+        style="color: red; text-align: center; margin-top: 10px"
+      ></div>
+    </div>
+    <script src="login.js"></script>
+  </body>
+</html>
