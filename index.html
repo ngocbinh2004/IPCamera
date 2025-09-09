@@ -2,34 +2,20 @@
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
-    <title>Đăng nhập IPCamera</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login</title>
     <link rel="stylesheet" href="style.css" />
   </head>
-  <body>
+  <body class="login-page">
     <div class="login-container">
-      <h2>Đăng nhập</h2>
-      <form id="loginForm">
-        <input
-          type="text"
-          id="username"
-          name="username"
-          placeholder="Tên đăng nhập"
-          required
-        />
-        <input
-          type="password"
-          id="password"
-          name="password"
-          placeholder="Mật khẩu"
-          required
-        />
-        <button type="submit">Đăng nhập</button>
+      <form id="loginForm" class="card">
+        <h2>Đăng nhập</h2>
+        <input type="text" id="username" placeholder="Tên đăng nhập" required />
+        <input type="password" id="password" placeholder="Mật khẩu" required />
+        <button type="submit" class="btn-primary">Đăng nhập</button>
+        <p id="message"></p>
       </form>
-      <div
-        id="message"
-        style="color: red; text-align: center; margin-top: 10px"
-      ></div>
     </div>
-    <script src="login.js"></script>
+    <script src="app.js"></script>
   </body>
 </html>
