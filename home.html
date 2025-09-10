@@ -4,82 +4,92 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Trang chính</title>
+  <title>IP Camera – Cài đặt</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 
 <body>
-  <div class="sidebar">
+  <aside class="sidebar">
     <h3 class="sidebar-title">IP Setting</h3>
-    <button class="sidebar-btn active" data-section="WifiSetup">
-      Wifi Setup
-    </button>
+    <button class="sidebar-btn" data-section="WifiSetup">Wifi Setup</button>
+    <button class="sidebar-btn" data-section="FirmwareUpdate">Firmware Update</button>
+    <button class="sidebar-btn active" data-section="Logging">Logging</button>
+    <button class="sidebar-btn" data-section="SystemInformation">System Information</button>
+    <button class="sidebar-logout" id="btnLogout">Đăng xuất</button>
+  </aside>
 
-    <button class="sidebar-btn" data-section="Firmware Update">
-      Firmware Update
-    </button>
-    <button class="sidebar-btn" data-section="Logging">Logging</button>
-    <button class="sidebar-btn" data-section="SystemInformation">
-      System Information
-    </button>
-    <button id="logoutBtn" class="btn-logout">Đăng xuất</button>
-  </div>
-
-  <div class="content">
-    <section class="settings-section" id="WifiSetup">
-      <h3>Wifi Setup</h3>
-      <div class="settings-row">
-        <label>SSID</label>
-        <input type="text" placeholder="Nhập SSID..." />
-      </div>
-      <div class="settings-row">
-        <label>Password</label>
-        <input type="password" placeholder="Nhập mật khẩu..." />
-      </div>
-      <div class="settings-row">
-        <button>Kết nối Wifi</button>
+  <main class="content">
+    <!-- Wifi Setup -->
+    <section id="WifiSetup" class="settings-section" style="display:none">
+      <div class="card">
+        <h2>Wifi Setup</h2>
+        <div class="settings-row">
+          <label>SSID</label>
+          <input type="text" placeholder="Tên mạng Wi-Fi" />
+        </div>
+        <div class="settings-row">
+          <label>Password</label>
+          <input type="password" placeholder="Mật khẩu Wi-Fi" />
+        </div>
+        <button class="btn-primary">Lưu</button>
       </div>
     </section>
 
-    <section class="settings-section" id="Firmware Update" style="display: none">
-      <h3>Firmware Update</h3>
-      <div class="settings-row">
-        <label>Chọn file firmware</label>
-        <input type="file" />
-      </div>
-      <div class="settings-row">
-        <button>Cập nhật</button>
-      </div>
-    </section>
-
-    <section class="settings-section" id="Logging" style="display: none">
-      <h3>Logging</h3>
-      <div class="settings-row">
-        <label>Log Level</label>
-        <select>
-          <option>Info</option>
-          <option>Warning</option>
-          <option>Error</option>
-        </select>
-      </div>
-      <div class="settings-row">
-        <button>Lưu Log</button>
+    <!-- Firmware Update -->
+    <section id="FirmwareUpdate" class="settings-section" style="display:none">
+      <div class="card">
+        <h2>Firmware Update</h2>
+        <div class="settings-row">
+          <label>Chọn tệp</label>
+          <input type="file" />
+        </div>
+        <button class="btn-primary">Cập nhật</button>
       </div>
     </section>
 
-    <section class="settings-section" id="SystemInformation" style="display: none">
-      <h3>System Information</h3>
-      <div class="settings-row">
-        <label>Firmware Version</label>
-        <input type="text" value="1.0" disabled />
-      </div>
-      <div class="settings-row">
-        <label>Address</label>
-        <input type="text" value="00:11:22:33:44:55" disabled />
+    <!-- Logging -->
+    <section id="Logging" class="settings-section">
+      <div class="card">
+        <h2>Logging</h2>
+
+        <div class="logging-layout">
+          <div class="logging-left">
+            <button class="btn-secondary" id="btnLevelLabel">Logging Level</button>
+          </div>
+
+          <div class="logging-center">
+            <div class="level-display" id="levelDisplay">DEBUG</div>
+            <select id="levelSelect" class="level-select" aria-label="Chọn mức logging">
+              <option value="DEBUG" selected>DEBUG</option>
+              <option value="INFO">INFO</option>
+              <option value="WARN">WARN</option>
+              <option value="ERROR">ERROR</option>
+              <option value="FATAL">FATAL</option>
+            </select>
+
+            <div class="logging-actions">
+              <button class="btn-primary" id="btnStart">Start</button>
+              <button class="btn-primary btn-muted" id="btnStop" disabled>Stop</button>
+              <button class="btn-primary" id="btnSave">Save Log</button>
+            </div>
+          </div>
+        </div>
+
+        <pre id="logPreview" class="log-preview" aria-label="Xem nhanh log"></pre>
       </div>
     </section>
 
-  </div>
+    <!-- System Information -->
+    <section id="SystemInformation" class="settings-section" style="display:none">
+      <div class="card">
+        <h2>System Information</h2>
+        <div class="settings-row"><label>Version</label><input type="text" value="1.0" disabled /></div>
+        <div class="settings-row"><label>Address</label><input type="text" value="00:11:22:33:44:55" disabled /></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script src="app.js"></script>
 </body>

@@ -3,201 +3,188 @@
   padding: 0;
   box-sizing: border-box;
 }
-
 body {
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  background: #f0f2f5;
-  color: #333;
-}
-
-.login-page {
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell,
+    Noto Sans, sans-serif;
+  background: #f4f6f8;
+  color: #222;
   display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-}
-
-.login-container {
-  width: 100%;
-  max-width: 350px;
-}
-
-.card {
-  background: #fff;
-  padding: 30px;
-  border-radius: 12px;
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-  text-align: center;
-}
-
-.card h2 {
-  margin-bottom: 20px;
-  color: #333;
-}
-
-.card input {
-  width: 100%;
-  margin: 10px 0;
-  padding: 12px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  font-size: 15px;
-}
-
-.btn-primary {
-  width: 100%;
-  padding: 12px;
-  margin-top: 10px;
-  background: #008cba;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 16px;
-  transition: background 0.3s;
-}
-
-.btn-primary:hover {
-  background: #0074a3;
-}
-
-#message {
-  margin-top: 12px;
-  font-size: 14px;
-}
-
-/* Sidebar Layout */
-.sidebar {
-  width: 220px;
-  float: left;
-  background: #222;
   min-height: 100vh;
-  padding: 20px 10px;
-  color: #fff;
 }
 
+/* Sidebar */
+.sidebar {
+  width: 240px;
+  background: #1f2329;
+  color: #fff;
+  padding: 20px 14px;
+}
 .sidebar-title {
-  margin-bottom: 15px;
-  font-size: 18px;
+  font-size: 20px;
   text-align: center;
-  color: #ddd;
+  margin-bottom: 16px;
+  opacity: 0.9;
 }
-
-.sidebar-btn {
-  display: block;
+.sidebar-btn,
+.sidebar-logout {
   width: 100%;
-  padding: 12px;
-  margin: 6px 0;
-  background: #333;
-  color: #fff;
+  padding: 12px 14px;
   border: none;
-  border-radius: 6px;
-  cursor: pointer;
+  border-radius: 10px;
+  background: #2d333b;
+  color: #fff;
   text-align: left;
-  transition: background 0.3s;
-}
-
-.sidebar-btn:hover {
-  background: #444;
-}
-
-.sidebar-btn.active {
-  background: #008cba;
-}
-
-.btn-logout {
-  display: block;
-  margin-top: 20px;
-  padding: 12px;
-  width: 100%;
-  background: #e74c3c;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
+  margin-bottom: 10px;
   cursor: pointer;
-  transition: background 0.3s;
+  transition: 0.2s;
 }
-
-.btn-logout:hover {
-  background: #c0392b;
+.sidebar-btn.active {
+  background: #0582ff;
+}
+.sidebar-btn:hover {
+  transform: translateY(-1px);
+}
+.sidebar-logout {
+  background: #e74c3c;
+  text-align: center;
+  font-weight: 600;
+  margin-top: 12px;
 }
 
 /* Content */
 .content {
-  margin-left: 220px;
-  padding: 20px;
+  flex: 1;
+  padding: 28px;
 }
-
-.settings-section {
-  display: none;
+.card {
   background: #fff;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 16px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.06);
+  padding: 24px;
 }
-
-/* Wifi Setup Section */
-.settings-section {
-  background: #fff;
-  padding: 25px 30px;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  max-width: 500px;
-  margin: 30px auto;
-}
-
-.settings-section h3 {
-  font-size: 22px;
-  font-weight: 600;
-  margin-bottom: 20px;
-  color: #222;
-}
-
-.settings-row {
-  display: flex;
-  align-items: center;
+.card h2 {
+  font-size: 28px;
   margin-bottom: 18px;
 }
 
-.settings-row label {
-  width: 120px;
-  font-size: 16px;
-  font-weight: 500;
-  color: #333;
+/* Logging layout */
+.logging-layout {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 28px;
+}
+.logging-left {
+  display: flex;
+  align-items: flex-start;
+}
+.btn-secondary {
+  padding: 10px 14px;
+  border: none;
+  border-radius: 10px;
+  background: #0ea5e9;
+  color: #fff;
+  font-weight: 600;
 }
 
-.settings-row input {
-  flex: 1;
-  padding: 12px 14px;
-  font-size: 16px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  outline: none;
-  transition: border 0.3s;
+.logging-center {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.level-display {
+  border: 3px solid #222;
+  border-radius: 10px;
+  padding: 12px 18px;
+  font-weight: 900;
+  letter-spacing: 0.6px;
+  width: 280px;
+  text-align: center;
+  font-size: 20px;
+  background: #fff;
+}
+.level-select {
+  width: 280px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #e1e5ea;
 }
 
-.settings-row input:focus {
-  border-color: #3386ff;
-  box-shadow: 0 0 4px rgba(51, 134, 255, 0.4);
+.logging-actions {
+  display: flex;
+  gap: 16px;
+  margin-top: 10px;
+  flex-wrap: wrap;
 }
-
-.settings-row button {
-  width: 100%;
-  padding: 14px;
+.btn-primary {
+  padding: 12px 18px;
+  border: none;
+  border-radius: 10px;
   background: #3386ff;
   color: #fff;
-  font-size: 16px;
-  font-weight: 600;
-  border: none;
-  border-radius: 8px;
+  font-weight: 700;
   cursor: pointer;
-  transition: background 0.3s, transform 0.1s;
+  transition: transform 0.05s, opacity 0.2s;
+}
+.btn-primary:hover {
+  transform: translateY(-1px);
+}
+.btn-muted {
+  opacity: 0.6;
+}
+.btn-primary.loading {
+  opacity: 0.7;
+  pointer-events: none;
 }
 
-.settings-row button:hover {
-  background: #246be0;
+/* Simple rows */
+.settings-row {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 14px;
+  align-items: center;
+  margin: 10px 0;
+}
+.settings-row input {
+  padding: 12px;
+  border: 1px solid #e1e5ea;
+  border-radius: 10px;
 }
 
-.settings-row button:active {
-  transform: scale(0.98);
+/* Log preview */
+.log-preview {
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 14px;
+  border-radius: 12px;
+  min-height: 120px;
+  max-height: 220px;
+  overflow: auto;
+  margin-top: 16px;
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  background: #111827;
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 10px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+  transform: translateY(8px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+  z-index: 50;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+.toast.success {
+  background: #16a34a;
+}
+.toast.error {
+  background: #dc2626;
 }
