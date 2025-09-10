@@ -188,3 +188,55 @@ body {
 .toast.error {
   background: #dc2626;
 }
+
+/* ---------- Login page (dựng bằng JS) ---------- */
+#login-mount {
+  width: 100%;
+}
+.login-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: #f4f6f8;
+}
+.login-card {
+  background: #fff;
+  padding: 28px;
+  border-radius: 16px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.06);
+  width: 360px;
+}
+.login-card h1 {
+  font-size: 24px;
+  margin-bottom: 14px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  margin: 10px 0;
+}
+.field input {
+  padding: 12px;
+  border: 1px solid #e1e5ea;
+  border-radius: 10px;
+}
+.actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+}
+.btn {
+  padding: 12px 18px;
+  border: none;
+  border-radius: 10px;
+  background: #3386ff;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+.login-msg {
+  margin-top: 10px;
+  color: #666;
+  font-size: 13px;
+}
