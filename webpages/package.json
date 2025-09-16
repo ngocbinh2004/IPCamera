@@ -1,0 +1,11 @@
+{
+  "dependencies": {
+    "@node-minify/core": "^9.0.2",
+    "@node-minify/cssnano": "^9.0.1",
+    "@node-minify/terser": "^9.0.1",
+    "express": "^5.1.0",
+    "fs": "^0.0.1-security",
+    "stream": "^0.0.3",
+    "zlib": "^1.0.5"
+  }
+}
