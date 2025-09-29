@@ -1,5 +1,3 @@
-const { response } = require("express");
-
 (function () {
   const API = {
     setLevel: "/api/logging/level",
@@ -7,7 +5,7 @@ const { response } = require("express");
     stop: "/api/logging/stop",
     download: "/api/logging/download",
     logout: "/api/logout",
-    login: "api/v1/login", // để sau gắn backend thật
+    login: "/api/login", // để sau gắn backend thật
   };
 
   const $ = (sel, root = document) => root.querySelector(sel);
@@ -73,31 +71,17 @@ const { response } = require("express");
     `;
 
     $("#btnLogin").addEventListener("click", async () => {
-      const x = $("#login-u").value.trim();
-      const y = $("#login-p").value;
-      if (!x || !y) {
+      const u = $("#login-u").value.trim();
+      const p = $("#login-p").value;
+      if (!u || !p) {
         $("#login-msg").textContent = "Vui lòng nhập đủ thông tin";
         return;
       }
-      const baseUrl = `http://192.168.4.1/api/v1/login?username=${x}&password=${y}`;
-      await fetch(baseUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      })
-        .then((response) => {
-          return response.json();
-        })
-        .then((data) => {
-          console.log("Sess", data);
-        })
-        .catch((error) => {
-          console.error("Error:", error);
-        });
       // Gọi API thật nếu có; hiện tại giả lập
-      // await safeFetch(API.login, {
-      //   method: "POST",
-      //   body: JSON.stringify({ u, p }),
-      // });
+      await safeFetch(API.login, {
+        method: "POST",
+        body: JSON.stringify({ u, p }),
+      });
       localStorage.setItem("token", "dummy");
       location.hash = "#/home";
       mount.hidden = true;
@@ -158,12 +142,6 @@ const { response } = require("express");
         const id = this.dataset.section;
         const target = document.getElementById(id);
         if (target) target.style.display = "";
-        if (id === "WifiSetup") {
-          const scanButton = document.querySelector("#WifiSetup .btn-primary");
-          if (scanButton) {
-            scanButton.addEventListener("click", scanWifi);
-          }
-        }
       });
     });
   }

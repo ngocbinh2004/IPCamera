@@ -89,10 +89,9 @@
 #define PINSTR "%c%c%c%c%c%c%c%c"
 #endif
 
-#define MQTT_MAX_RECONNECT_TRIES 5000
+#define MQTT_MAX_RECONNECT_TRIES 120
 #define WiFi_retries 250
 
-#define REST_SERVER_PORT 80
 #define MQTT_BROKER_PORT 1883
 
 static esp_wps_config_t config = WPS_CONFIG_INIT_DEFAULT(WPS_MODE);
@@ -147,7 +146,6 @@ int RelayStatus;
 bool mDNSDaemonExist = false;
 char jsonMessage[400] = {};
 
-AsyncWebServer server(REST_SERVER_PORT);
 WiFiClient client;
 PubSubClient mqtt_client(client);
 
@@ -304,14 +302,12 @@ bool tryToConnectWifi()
   WiFi.begin(eeprom_ssid, eeprom_password);
   if (WiFi.waitForConnectResult() == WL_CONNECTED)
   {
-    Serial.println("Connected to SSID " + String(eeprom_ssid) + +" successfully!");
-    Serial.print("Local IP address: ");
-    Serial.println(WiFi.localIP());
+    ESP_LOGI(TAG, "Connected to SSID %s successfully with IP address: %s", eeprom_ssid, WiFi.localIP().toString());
     mWifiConnected = true;
   }
   else
   {
-    Serial.println("Failed to connect to SSID: " + String(eeprom_ssid) + ", Passphrase: " + String(eeprom_password));
+    ESP_LOGI(TAG, "Failed to connect to SSID %s", eeprom_ssid);
     mWifiConnected = false;
   }
   return mWifiConnected;
@@ -319,8 +315,7 @@ bool tryToConnectWifi()
 
 static void rebootEspWithReason(String reason)
 {
-  Serial.println(reason);
-  delay(1000);
+  ESP_LOGI(TAG, "root with reason: %s", reason.c_str());
   ESP.restart();
 }
 
@@ -332,7 +327,7 @@ void performUpdate(Stream &updateSource, size_t updateSize)
     size_t written = Update.writeStream(updateSource);
     if (written == updateSize)
     {
-      Serial.println("Written : " + String(written) + " successfully");
+      Serial.println("Written : " + String(written) + "/" + String(updateSize) + " [100%]");
     }
     else
     {
@@ -341,28 +336,23 @@ void performUpdate(Stream &updateSource, size_t updateSize)
     result += "Written : " + String(written) + "/" + String(updateSize) + " [" + String((written / updateSize) * 100) + "%] \n";
     if (Update.end())
     {
-      Serial.println("OTA done!");
       result += "OTA Done: ";
       if (Update.isFinished())
       {
-        Serial.println("Update successfully completed. Rebooting...");
         result += "Success!\n";
       }
       else
       {
-        Serial.println("Update not finished? Something went wrong!");
         result += "Failed!\n";
       }
     }
     else
     {
-      Serial.println("Error Occurred. Error #: " + String(Update.getError()));
       result += "Error #: " + String(Update.getError());
     }
   }
   else
   {
-    Serial.println("Not enough space to begin OTA");
     result += "Not enough space for OTA";
   }
   // http send 'result'
@@ -446,11 +436,11 @@ void updateFromFS(fs::FS &fs)
   }
 }
 
-bool downloadFirmware(String fwUrl)
+bool downloadFirmware(fs::FS &fs, String fwUrl)
 {
   HTTPClient http;
   bool stat = false;
-  File f = SPIFFS.open("/firmware.bin", "w");
+  File f = fs.open("/firmware.bin", "w");
   if (f)
   {
     http.begin(fwUrl);
@@ -480,20 +470,20 @@ bool downloadFirmware(String fwUrl)
 }
 
 // check for new firmware version and download if available
-void do_firmware_upgrade()
+void do_firmware_upgrade(fs::FS &fs)
 {
   if (checkFirmware())
   {
-    if (SPIFFS.exists("/firmware.bin"))
+    if (fs.exists("/firmware.bin"))
     {
-      SPIFFS.remove("/firmware.bin");
+      fs.remove("/firmware.bin");
       Serial.println("Removed existing update file");
     }
     Serial.println("Start firmware upgrade process");
-    if (downloadFirmware(OTA_URL))
+    if (downloadFirmware(fs, OTA_URL))
     {
       Serial.println("Firmware downloaded successfully");
-      updateFromFS(SPIFFS);
+      updateFromFS(fs);
     }
     else
     {
@@ -504,29 +494,49 @@ void do_firmware_upgrade()
 
 int myVprintf(const char *format, va_list args)
 {
-  static File logFile;
-  if (!logFile || logFile.size() == 0)
-  {
-    logFile = SPIFFS.open("/log.txt", FILE_APPEND);
-    if (!logFile)
-    {
-      logFile = SPIFFS.open("/log.txt", FILE_WRITE);
-      if (!logFile)
-      {
-        Serial.println("Failed to open log file for writing");
-        return 0;
-      }
-    }
-  }
-  // write to log file
-  char buffer[256];
+  static char buffer[128];
   int len = vsnprintf(buffer, sizeof(buffer), format, args);
   if (len > 0)
   {
-    logFile.write((const uint8_t *)buffer, len);
-    logFile.flush();
+    if (log2Serial)
+    {
+      Serial.println(buffer);
+    }
+    if (log2File)
+    {
+      File logFile = FILESYSTEM.open(LOGFILE_PATH, FILE_APPEND);
+      if (!logFile)
+      {
+        logFile = FILESYSTEM.open(LOGFILE_PATH, FILE_WRITE);
+      }
+      if (logFile && logFile.size() > MAX_LOG_FILE_SIZE)
+      {
+        logFile.close();
+        // need to rename log.txt to log_old.txt
+        if (FILESYSTEM.exists(LOGFILE_PATH))
+        {
+          FILESYSTEM.rename(LOGFILE_PATH, LOGFILE_OLD_PATH);
+          // create new log.txt file
+          logFile = FILESYSTEM.open(LOGFILE_PATH, FILE_WRITE);
+          if (logFile)
+          {
+            logFile.println("Log file created");
+          }
+        }
+      }
+      char record[128];
+      char timeStr[20];
+      getDateTimeString(timeStr, 20);
+      sprintf(record, "[%s] %s", timeStr, buffer);
+      logFile.println(record);
+      logFile.flush();
+      logFile.close();
+    }
+    if (log2WS)
+    {
+      notifyToClient(buffer, len);
+    }
   }
-  logFile.close();
   return len;
 }
 
@@ -551,51 +561,44 @@ void setup()
 
   WRMStatus = WRMSTATUS_INIT;
   RelayStatus = RELAYSTATUS_OFF;
-
-  if (!SPIFFS.begin(true))
+  if (FILESYSTEM.begin(true))
   {
-    Serial.println("An Error has occurred while mounting SPIFFS");
-  }
-  Serial.println("SPIFFS mounted successfully");
-  if (!SPIFFS.exists("/log.txt"))
-  {
-    File logFile = SPIFFS.open("/log.txt", FILE_WRITE);
-    if (!logFile)
-    {
-      Serial.println("Failed to create log file");
-    }
-    else
-    {
-      Serial.println("Log file created");
-      logFile.close();
-    }
-  }
-  // set up logging to file
-  Serial.println("Setting up logging to file");
-  esp_log_level_set("*", ESP_LOG_WARN);
-  esp_log_level_set(TAG, ESP_LOG_INFO);
-  // esp_log_set_vprintf(myVprintf);
+    Serial.println("LittleFS mounted successfully");
+    esp_log_level_set("*", ESP_LOG_VERBOSE);
 
+    if (!FILESYSTEM.exists(LOGFILE_PATH))
+    {
+      File logFile = FILESYSTEM.open(LOGFILE_PATH, FILE_WRITE);
+      if (logFile)
+      {
+        logFile.println("Log file created");
+        logFile.close();
+      }
+    }
+    esp_log_level_set(TAG, ESP_LOG_INFO);
+    // esp_log_set_vprintf(myVprintf);
+  }
+  else
+  {
+    ESP_LOGI(TAG, "An Error has occurred while mounting FILESYSTEM");
+    rebootEspWithReason("Rebooting due to FILESYSTEM initialisation failure");
+  }
   ESP_LOGI(TAG, "ESP32 Chip ID: %s", chip_id);
   ESP_LOGI(TAG, "WiFi Relay Module Firmware Version: %d", WRMFWVER);
-
   if (!EEPROM.begin(EEPROM_INFO_SIZE))
   {
-    Serial.println("Failed to initialise EEPROM");
-    Serial.println("\nRestarting in 5 seconds");
-    delay(5000);
-    ESP.restart();
+    rebootEspWithReason("Rebooting due to EEPROM initialisation failure");
   }
 
   // Read EEPROM for header.
   EEPROM.readString(EEPROM_OFFSET_HEADER, eeprom_header, EEPROM_HEADER_SIZE);
   if (!strcmp(eeprom_header, "VMXWRM"))
   {
-    Serial.println("WRM firmware EEPROM format is correct");
+    ESP_LOGI(TAG, "WRM firmware EEPROM format is correct");
   }
   else
   {
-    Serial.println("WRM firmware EEPROM format is invalid. Need to format firstly.");
+    ESP_LOGI(TAG, "WRM firmware EEPROM format is invalid. Need to format firstly.");
     processFormatWRMEEPROM();
   }
 
@@ -607,7 +610,7 @@ void setup()
   WRMStatus = WRMSTATUS_JOIN_AP;
   if (!strlen(eeprom_ssid) || !strlen(eeprom_password))
   {
-    Serial.println("There is no wifi configuration in EEPROM memory - ESP32 wifi network created!");
+    ESP_LOGI(TAG, "There is no wifi configuration in EEPROM memory - ESP32 wifi network created!");
 
     mWifiMode = AP_MODE;
     WiFi.mode(WIFI_AP);
@@ -617,26 +620,23 @@ void setup()
     ssid_ap.toUpperCase();
     WiFi.softAP(ssid_ap.c_str());
 
-    Serial.println("Access point name:" + ssid_ap);
-    Serial.println("Web server access address:" + WiFi.softAPIP().toString());
+    ESP_LOGI(TAG, "Web server access address: %s", WiFi.softAPIP().toString());
   }
   else
   {
-    Serial.println("Connecting to wifi...!");
     if (tryToConnectWifi() == true)
     {
-
-      do_firmware_upgrade();
-
+      configTime(0, 0, "pool.ntp.org", "time.nist.gov"); // UTC
+      // do_firmware_upgrade(FILESYSTEM);
       mLastConnTime = millis();
       if (!mDNSDaemonExist)
       {
         char mdns_name[48] = {};
         sprintf(mdns_name, "VMXWRM_%s", chip_id);
-        Serial.println("mdns_name: " + String(mdns_name));
+        ESP_LOGI(TAG, "mdns_name: %s", mdns_name);
         if (!MDNS.begin(mdns_name))
         {
-          Serial.println("Error setting up MDNS responder!");
+          ESP_LOGI(TAG, "Error setting up MDNS responder!");
           while (1)
           {
             delay(1000);
@@ -644,15 +644,13 @@ void setup()
         }
         // Add service to MDNS-SD
         MDNS.addService("_vnx_relay", "tcp", REST_SERVER_PORT);
+        ESP_LOGI(TAG, "You can now connect to http://%s.local", mdns_name);
         mDNSDaemonExist = true;
-        Serial.println("mDNS responder started");
       }
     }
     else
     {
-      Serial.println("Failed to connect to SSID: " + String(eeprom_ssid) + ", Passphrase: " + String(eeprom_password));
-      Serial.println("ESP32 wifi network created!");
-
+      ESP_LOGI(TAG, "Cannot connect to SSID: %s. Switch to Soft AP mode", eeprom_ssid);
       mWifiMode = AP_MODE;
       WiFi.mode(WIFI_AP);
       uint8_t macAddr[6];
@@ -660,11 +658,13 @@ void setup()
       String ssid_ap = "ESP32-" + String(macAddr[4], HEX) + String(macAddr[5], HEX);
       ssid_ap.toUpperCase();
       WiFi.softAP(ssid_ap.c_str());
-
-      Serial.println("Access point name:" + ssid_ap);
-      Serial.println("Web server access address:" + WiFi.softAPIP().toString());
+      ESP_LOGI(TAG, "Web server access address: ", WiFi.softAPIP().toString());
     }
   }
+  // setup event handler
+  ws.onEvent(onEvent);
+  server.addHandler(&ws);
+  // Start web server
   runHttpServer();
 }
 
@@ -726,14 +726,12 @@ void processResetBtn()
   {
     if (((millis() - lastDebounceTime_resetBtn) > debounceDelay_resetBtn) && resetBtnReleased)
     {
-      Serial.println("Processing reset ......");
       lastDebounceTime_resetBtn = millis();
       resetBtnReleased = false;
 
       processFormatWRMEEPROM();
-      Serial.println("\nRestarting in 1 seconds");
       delay(1000);
-      ESP.restart();
+      rebootEspWithReason("Rebooting due to reset button pressed");
     }
   }
   else
@@ -760,23 +758,26 @@ void handleSetupPost(AsyncWebServerRequest *req)
   DeserializationError error = deserializeJson(jsonBuffer, body.c_str());
   if (error)
   {
-    Serial.print(F("deserializeJson() failed: "));
-    Serial.println(error.f_str());
+    ESP_LOGI(TAG, "Failed to parse %s with error: %s", body.c_str(), error.f_str());
     return;
   }
 
   const char *ctrlBoxIP = jsonBuffer["ctrlBoxIP"];
   const char *sender = jsonBuffer["sender"];
-  Serial.print("CtrlBox IP: ");
-  Serial.println(ctrlBoxIP);
+  if (!ctrlBoxIP || !sender)
+  {
+    ESP_LOGI(TAG, "Parameter invalid");
+    return;
+  }
 
   memcpy(eeprom_ctrlbox_ipaddr, ctrlBoxIP, sizeof(eeprom_ctrlbox_ipaddr));
   memcpy(reqSender, sender, sizeof(reqSender));
 
-  Serial.println(eeprom_ctrlbox_ipaddr);
   EEPROM.writeString(EEPROM_OFFSET_CTRLBOX_IP, eeprom_ctrlbox_ipaddr);
   EEPROM.commit();
   delay(100);
+
+  ESP_LOGI(TAG, "ctrlBoxIP: %s with sender: %s", ctrlBoxIP, sender);
 
   // Respond to the client
   jsonBufferRes["setup"] = "Commpleted";
@@ -800,9 +801,6 @@ void handleSetupPost(AsyncWebServerRequest *req)
 void mqttBrokerCallback(char *topic, byte *payload, unsigned int length)
 {
   int result = -1;
-
-  Serial.print("Received. topic = ");
-  Serial.println(topic);
 
   memset(mqtt_info, 0, sizeof(mqtt_info));
   for (int i = 0; i < length; i++)
@@ -887,9 +885,7 @@ void mqttBrokerCallback(char *topic, byte *payload, unsigned int length)
         processFormatWRMEEPROM();
         result = 0;
 
-        Serial.println("\nRestarting in 1 seconds");
-        delay(1000);
-        ESP.restart();
+        rebootEspWithReason("Rebooting due to remove command received");
       }
     }
   }
@@ -951,13 +947,11 @@ bool connectToMQTTBroker()
   }
 
   // Try to connect to the MQTT broker
-  Serial.print("\nConnecting to MQTT broker: " + String(mqtt_id));
   while (!mqtt_client.connect(mqtt_id) && retries < MQTT_MAX_RECONNECT_TRIES)
   {
     // If we fail to connect to the MQTT broker, we will try again later.
-    Serial.print(" ");
-    Serial.print(retries);
-    delay(500);
+    ESP_LOGI(TAG, "Attempting to connect to MQTT broker at %s (try %d)...", eeprom_ctrlbox_ipaddr, retries);
+    delay(1000);
     retries++;
     processStatusLED();
     processResetBtn();
@@ -967,7 +961,7 @@ bool connectToMQTTBroker()
   // If not we just end the function and wait for the next loop.
   if (!mqtt_client.connected())
   {
-    Serial.println("\nTimeout! Unable to connect to MQTT broker");
+    ESP_LOGI(TAG, "Timeout! Unable to connect to MQTT broker at %s", eeprom_ctrlbox_ipaddr);
     return false;
   }
   else
@@ -977,9 +971,7 @@ bool connectToMQTTBroker()
     mqtt_client.subscribe(CtrlBox2relayTopic, qos);
     // mqtt_client.subscribe(relay2CtrlBoxTopic, qos);
 
-    Serial.println("\nConnected to Broker and subscribed to Topic");
     StaticJsonDocument<200> jsonBufferRes;
-
     // Respond to the client
     memset(jsonMessage, 0, sizeof(jsonMessage));
     jsonBufferRes.clear();
@@ -994,6 +986,7 @@ bool connectToMQTTBroker()
     mqtt_client.publish(relay2CtrlBoxTopic, jsonMessage);
     WRMStatus = WRMSTATUS_NORMAL;
   }
+  ESP_LOGI(TAG, "Connected to MQTT broker at %s", eeprom_ctrlbox_ipaddr);
   return true;
 }
 
@@ -1079,13 +1072,13 @@ void runHttpServer()
       return;
     }
     /** https://github.com/ESP32Async/ESPAsyncWebServer/wiki#scanning-for-available-wifi-networks */
-    ESP_LOGI(TAG, "Scanning for WiFi networks...");
-    int res = WiFi.scanComplete();
+        ESP_LOGI(TAG,"Waiting Wfi"); 
+int res = WiFi.scanComplete();
     if (res == -2){
         WiFi.scanNetworks(true);
         // The very first request will be empty, reload /scan endpoint
         req->send(200, "application/json", "{\"reload\" : 1}");
-    } else if (res) {
+   } else if (res) {
       ESP_LOGI(TAG, "Number of networks: %d", res);
       DynamicJsonDocument doc(512);
       for(int i = 0; i < res; ++i) {
@@ -1141,7 +1134,7 @@ void runHttpServer()
       req->send(200, "text/plain", resp);
       // automatically restart ESP after 10 seconds
       restartTimer.once_ms(10000, []() {
-        ESP.restart();
+        rebootEspWithReason("Rebooting to connect to new AP");
       });
     } else {
       req->send(400,"text/plain","SSID cannot be empty");
@@ -1173,7 +1166,7 @@ void runHttpServer()
     } else {
       req->send(200,"text/plain","update ok, rebooting...");
       restartTimer.once_ms(3000, []() {
-        ESP.restart();
+        rebootEspWithReason("Rebooting to complete OTA update");
       });
     } }, [](AsyncWebServerRequest *req, String filename, size_t index, uint8_t *data, size_t len, bool final)
             {
@@ -1197,12 +1190,76 @@ void runHttpServer()
         getUpdateErrorMsg();
       }
     } });
+  server.on("/api/v1/download", HTTP_GET, [](AsyncWebServerRequest *req)
+            {
+    if(req->hasArg("filename")) {
+      String fileName = req->arg("filename");
+        if (FILESYSTEM.exists("/" + fileName)) {
+          req->send(FILESYSTEM, "/" + fileName, "application/octet-stream", true); // true to download
+        } else {
+          req->send(404,"text/plain","File not found");
+        }
+    } else {
+      req->send(400,"text/plain","Bad Request: Missing filename parameter");
+    } });
+  server.on("/api/v1/log", HTTP_GET, [](AsyncWebServerRequest *req)
+            {
+    if (LittleFS.exists(LOGFILE_PATH)) {
+      req->send(LittleFS,LOGFILE_PATH, "text/plain");
+    } else {
+      req->send(200, "text/plain", "LOGS not found !");
+    } });
+  server.on("/api/v1/clearlog", HTTP_GET, [](AsyncWebServerRequest *req)
+            {
+    if (FILESYSTEM.exists(LOGFILE_PATH)) {
+      FILESYSTEM.remove(LOGFILE_PATH);
+    }
+    File logFile = FILESYSTEM.open(LOGFILE_PATH, FILE_WRITE);
+    if (logFile) {
+      logFile.println("Log file created");
+      logFile.close();
+    }
+    req->send(200,"text/plain","Log cleared"); });
+  server.on("/api/v1/list", HTTP_GET, [](AsyncWebServerRequest *req)
+            {
+    if (!requireAuthentication(req)) {
+      req->send(401,"text/plain","Access denied");
+      return;
+    }
+    String path = req->arg("path");
+    if (path != "/" && !FILESYSTEM.exists(path)) {
+      req->send(404, "text/plain", "File not found");
+      return;
+    }
+    File root = FILESYSTEM.open(path, "r");
+    if(!root){
+      req->send(500, "text/plain", "Failed to open directory");
+      return;
+    }
+    if(!root.isDirectory()){
+      req->send(500, "text/plain", "Not a directory");
+      return;
+    }
+
+    DynamicJsonDocument doc(1024);
+    JsonArray array = doc.to<JsonArray>();
+
+    File file = root.openNextFile();
+    while(file){
+      JsonObject fileObj = array.createNestedObject();
+      fileObj["name"] = String(file.name()).substring(1); // remove leading '/'
+      fileObj["size"] = formatBytes(file.size());
+      fileObj["type"] = file.isDirectory() ? "dir" : "file";
+      file = root.openNextFile();
+    }
+    String json;
+    serializeJson(doc, json);
+    req->send(200, "application/json", json); });
 
   server.on("/api/v1/reboot", HTTP_GET, [](AsyncWebServerRequest *req)
             {
     req->send(200,"text/plain","Rebooting...");
-    ESP.restart(); });
-
+    rebootEspWithReason("Rebooting due to /api/v1/reboot request"); });
   server.on("/api/v1/add", HTTP_POST, handleSetupPost);
 
   server.onNotFound([](AsyncWebServerRequest *req)
@@ -1231,23 +1288,6 @@ void runHttpServer()
         }
       }
     });
-
-    server.on("/log",HTTP_GET,[]{
-      String logData = "";
-
-      File logFile = SPIFFS.open("/log.txt", "r");
-      if (!logFile) {
-        server.send(500, "text/plain", "Failed to open log file for reading");
-        return;
-      }
-      while (logFile.available()) {
-        logData += logFile.readString();
-      }
-      logFile.close();
-      server.send(200, "text/plain", logData);
-    });
-
-
   */
   // Actually start the server
   server.begin();
@@ -1261,7 +1301,7 @@ void setClock()
 
   time_t now = time(nullptr);
   while (now < 8 * 3600 * 2)
-  {
+  { // wait for time to be set
     yield();
     delay(500);
     Serial.print(F("."));
@@ -1278,12 +1318,17 @@ void loop()
   processStatusLED();
   processResetBtn();
 
+  if (millis() - mLastWSCleanupTime > WS_CLEANUP_INTERVAL)
+  {
+    ws.cleanupClients();
+    mLastWSCleanupTime = millis();
+  }
   // try to connect to WiFi again if it is disconnected.
   if ((mWifiMode != AP_MODE) && (WiFi.status() != WL_CONNECTED))
   {
     if (millis() - mLastReConnTime > RE_CONN_WIFI_DELAY)
     { // 10 seconds
-      Serial.println("WiFi not connected, try to reconnect ...");
+      ESP_LOGI(TAG, "WiFi not connected, try to reconnect ...");
       mLastReConnTime = millis();
       if (tryToConnectWifi() == true)
       {
@@ -1293,13 +1338,13 @@ void loop()
     // If we cannot connect to WiFi after 1h, we restart the system.
     if (millis() - mLastConnTime > NO_CONN_RESTART_DELAY)
     {
-      ESP.restart();
+      rebootEspWithReason("Rebooting due to no WiFi connection for over 1 hour");
     }
   }
   else if ((WRMStatus == WRMSTATUS_JOIN_AP) && (WiFi.status() == WL_CONNECTED))
   {
-    Serial.println("Local ip: " + WiFi.localIP().toString());
     WRMStatus = WRMSTATUS_PAIRING;
+    ESP_LOGI(TAG, "WRMStatus transition from JOIN_AP to PAIRING");
   }
 
   if (WiFi.status() == WL_CONNECTED)
@@ -1309,8 +1354,7 @@ void loop()
     {
       WRMStatus = WRMSTATUS_CONNECT_CTRLBOX;
       EEPROM.readString(EEPROM_OFFSET_CTRLBOX_IP, eeprom_ctrlbox_ipaddr, EEPROM_CTRLBOX_IP_SIZE);
-      Serial.print("CtrlBoxIP: ");
-      Serial.println(eeprom_ctrlbox_ipaddr);
+      ESP_LOGI(TAG, "Connecting to CtrlBoxIP %s", eeprom_ctrlbox_ipaddr);
     }
 
     if (WRMStatus == WRMSTATUS_CONNECT_CTRLBOX)
@@ -1318,8 +1362,11 @@ void loop()
       // check if control box IP address is exist.
       if (strlen(eeprom_ctrlbox_ipaddr) > 0)
       {
-        Serial.println("MQTT Broker: " + String(eeprom_ctrlbox_ipaddr) + ", Port: " + String(MQTT_BROKER_PORT));
         connectToMQTTBroker();
+      }
+      else
+      {
+        ESP_LOGI(TAG, "CtrlBox IP address is not set yet");
       }
     }
 
@@ -1363,4 +1410,70 @@ void loop()
       }
     }
   }
+}
+
+void notifyClients(String message)
+{
+  if (!ws.availableForWriteAll())
+  {
+    Serial.println("No clients available for WebSocket write");
+    return;
+  }
+  Serial.println("Notifying clients: " + message);
+  ws.textAll(message);
+}
+
+void notifyToClient(const char *message, size_t len)
+{
+  if (!ws.availableForWriteAll())
+  {
+    Serial.println("No clients available for WebSocket write");
+    return;
+  }
+  ws.textAll(message, len);
+}
+
+// Handle incoming WebSocket messages from clients
+void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
+{
+  AwsFrameInfo *info = (AwsFrameInfo *)arg;
+  if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT)
+  {
+    data[len] = 0;
+    String message = (char *)data;
+    notifyClients(message);
+  }
+}
+
+void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len)
+{
+  switch (type)
+  {
+  case WS_EVT_CONNECT:
+    Serial.printf("WebSocket client #%u connected from %s\n", client->id(), client->remoteIP().toString().c_str());
+    break;
+  case WS_EVT_DISCONNECT:
+    Serial.printf("WebSocket client #%u disconnected\n", client->id());
+    break;
+  case WS_EVT_DATA:
+    handleWebSocketMessage(arg, data, len);
+    break;
+  case WS_EVT_PONG:
+    Serial.printf("WebSocket client #%u pong received\n", client->id());
+    break;
+  case WS_EVT_ERROR:
+    break;
+  }
+}
+
+String getDateTimeString()
+{
+  struct tm timeinfo;
+  if (!getLocalTime(&timeinfo))
+  {
+    return "0000-00-00 00:00:00";
+  }
+  char buffer[20];
+  strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &timeinfo);
+  return String(buffer);
 }

@@ -5,8 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>IP Camera – Cài đặt</title>
-  <link href=style.css rel=stylesheet type=text/css>
-
+  <link rel="stylesheet" href="style.css" />
 </head>
 
 <body>
@@ -24,27 +23,17 @@
     <section id="WifiSetup" class="settings-section" style="display:none">
       <div class="card">
         <h2>Wifi Setup</h2>
-
         <div class="settings-row">
           <label>SSID</label>
-          <select id="ssidSelect">
-            <option value="">Chọn mạng Wi-Fi</option>
-          </select>
+          <input type="text" placeholder="Tên mạng Wi-Fi" />
         </div>
-
         <div class="settings-row">
           <label>Password</label>
-          <input id="wifiPwd" type="password" placeholder="Mật khẩu Wi-Fi" />
+          <input type="password" placeholder="Mật khẩu Wi-Fi" />
         </div>
-
-        <div class="btn-row">
-          <button class="btn-primary" id="btnWifiScan">Scan</button>
-          <button class="btn-primary" id="btnWifiSave">Save</button>
-          <button class="btn-primary" id="btnWifiRequest">Request</button>
-        </div>
+        <button class="btn-primary">Lưu</button>
       </div>
     </section>
-
 
     <!-- Firmware Update -->
     <section id="FirmwareUpdate" class="settings-section" style="display:none">
@@ -69,6 +58,7 @@
           </div>
 
           <div class="logging-center">
+            <div class="level-display" id="levelDisplay">DEBUG</div>
             <select id="levelSelect" class="level-select" aria-label="Chọn mức logging">
               <option value="DEBUG" selected>DEBUG</option>
               <option value="INFO">INFO</option>
@@ -102,8 +92,7 @@
   <!-- Toast for feedback -->
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src=app.js></script>
-
+  <script src="app.js"></script>
 </body>
 
 </html>

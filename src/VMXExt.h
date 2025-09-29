@@ -9,8 +9,7 @@
 #include <Update.h>
 #include <HTTPClient.h>
 #include <HTTPUpdate.h>
-#include "FS.h"
-#include "SPIFFS.h"
+#include "LittleFS.h"
 #include <time.h>
 #include "StreamString.h"
 
@@ -18,11 +17,18 @@ const int FIRMWARE_VERSION = 1;
 
 #define OTA_URL "http://s3.ap-southeast-2.amazonaws.com/my.aws.aipod/firmware.bin" // once you compile this code, upload the binary to your bucket and change this URL for OTA
 
-
 #define NO_CONN_RESTART_DELAY 3600000 // 1 hour in milliseconds
 #define RE_CONN_WIFI_DELAY 10000 // 10 seconds in milliseconds
 #define HTTP_SERVER_ACTIVE_TIME 300000 // 5 minutes in milliseconds
+#define WS_CLEANUP_INTERVAL 60000 // 1 minute in milliseconds
 #define MAX_CONN_WIFI_RETRIES 10 // Maximum number of WiFi connection retries
+#define MAX_LOG_FILE_SIZE 1024 * 100 // 100KB
+
+#define REST_SERVER_PORT 80
+
+#define LOGFILE_PATH "/log.txt"
+#define LOGFILE_OLD_PATH "/log_old.txt"
+#define FILESYSTEM LittleFS
 
 /* Style */
 String style =
@@ -93,11 +99,22 @@ enum UpdateResult
     UPDATE_ERROR,
 };
 
+AsyncWebServer server(REST_SERVER_PORT); // Create AsyncWebServer object on port 80
+AsyncWebSocket ws("/ws"); // Create a WebSocket object
+
+struct tm ntpTime;
+
+// Ticker for restart
 Ticker restartTimer;
 
 bool mHTTPRunning = false;
 bool mMQTTRunning = false;
 bool mWifiConnected = false;
+
+// Logging options
+bool log2Serial = true;
+bool log2File = true;
+bool log2WS = true;
 
 int mWifiMode = AP_MODE;
 int mWifiRetriesCount = 0;
@@ -106,6 +123,7 @@ int mUpdateResult = UPDATE_OK;
 unsigned long mLastNoConnTime = 0;
 unsigned long mLastReConnTime = 0;
 unsigned long mLastConnTime = 0;
+unsigned long mLastWSCleanupTime = 0;
 
 String mUpdateErrorMsg = "";
 
@@ -113,7 +131,39 @@ String mUpdateErrorMsg = "";
 bool tryToConnectWifi();
 void runHttpServer();
 void setClock();
+
+// Firmware update functions
 void updateFirmware();
 void downloadFirmware();
 void getUpdateErrorMsg();
-#endif
+
+// WebSocket functions
+void notifyToClient(String message);
+void notifyToClient(const char* message, size_t len);
+void handleWebSocketMessage(void *arg, uint8_t *data, size_t len);
+void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len);
+
+// Function to get date time string
+// Format: "YYYY-MM-DD HH:MM:SS"
+inline void getDateTimeString(char* buffer, size_t len) {
+  struct tm timeinfo;
+  if(!getLocalTime(&timeinfo)){
+    snprintf(buffer, len, "0000-00-00 00:00:00");
+    return;
+  }
+  snprintf(buffer, len, "%04d-%02d-%02d %02d:%02d:%02d", timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+}
+
+inline String formatBytes(size_t bytes) {
+  if (bytes < 1024) {
+    return String(bytes) + " B";
+  } else if (bytes < 1048576) {
+    return String(bytes / 1024.0, 2) + " KB";
+  } else if (bytes < 1073741824) {
+    return String(bytes / 1048576.0, 2) + " MB";
+  } else {
+    return String(bytes / 1073741824.0, 2) + " GB";
+  }
+}
+
+#endif // __VMXEXT_H__
